@@ -1,51 +1,47 @@
 import cv2
 import mediapipe as mp
 
-# 1. Configuração Inicial do MediaPipe
-mp_utils = mp.solutions.drawing_utils    # Ferramenta para desenhar na tela
-mp_hands = mp.solutions.hands            # Exemplo: Módulo de Mãos (pode mudar para FaceMesh ou Pose)
+# Inicializa detector de rostos e utilitários de desenho
+mp_face = mp.solutions.face_detection
+mp_drawing = mp.solutions.drawing_utils
 
-# Inicializa o modelo de IA com configurações leves
-modelo_ia = mp_hands.Hands(
-    max_num_hands=1,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
-)
+# Inicializa o modelo de inferência
+model = mp_face.FaceDetection(min_detection_confidence=0.5)
 
-# 2. Inicializa a Webcam
+# Inicializa captura da Webcam (0 = padrão)
 cap = cv2.VideoCapture(0)
 
-print("Estrutura MediaPipe ativa. Pressione 'q' na janela para fechar.")
+print("Engine ativa. Pressione 'q' na janela de vídeo para encerrar.")
 
 while cap.isOpened():
-    success, frame = cap.read()
-    if not success:
+    ret, frame = cap.read()
+    if not ret:
+        print("Erro: Falha na captura do hardware.")
         continue
 
-    # Inverte a imagem (efeito espelho)
+    # Inverte o frame horizontalmente (efeito espelho para interação natural)
     frame = cv2.flip(frame, 1)
 
-    # O MediaPipe exige conversão de cores de BGR para RGB
+    # Conversão BGR -> RGB (Exigência estrutural do MediaPipe)
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    
-    # 3. Executa o processamento da IA no Frame
-    resultados = modelo_ia.process(frame_rgb)
 
-    # 4. Verifica se a IA detectou algo
-    if resultados.multi_hand_landmarks:
-        for landmarks in resultados.multi_hand_landmarks:
-            # Desenha os pontos e as conexões estruturais no frame original
-            mp_utils.draw_landmarks(frame, landmarks, mp_hands.HAND_CONNECTIONS)
+    # Executa a inferência matemática no frame
+    results = model.process(frame_rgb)
 
-    # 5. Renderiza a imagem na janela do Windows
-    cv2.imshow("Wandi Engine - MediaPipe Base", frame)
+    # Renderização das detecções sobre o frame original
+    if results.detections:
+        for detection in results.detections:
+            mp_drawing.draw_detection(frame, detection)
 
-    # Condição de saída rápida
+    # Exibição do buffer na janela nativa do SO
+    cv2.imshow("Mediapipe-Tarefas", frame)
+
+    # Condição de saída: tecla 'q'
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# 6. Limpeza e Liberação de Hardware
+# Desalocação estrita de hardware e memória
 cap.release()
 cv2.destroyAllWindows()
-modelo_ia.close()
-print("Processo encerrado com sucesso.")
+model.close()
+print("Recursos liberados de forma limpa.")
